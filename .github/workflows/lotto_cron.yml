@@ -2,8 +2,8 @@ name: Lotto Data Auto Fetcher
 
 on:
   schedule:
-    # 這裡使用 Cron 表達式，設定每週二、五晚上 9:30 (UTC 13:30) 執行（大樂透開獎後）
-    - cron: '30 13 * * 2,5'
+    # 設定週一至週五晚上 9:30 (UTC 13:30) 執行，全面捕捉兩種彩券
+    - cron: '30 13 * * 1-5'
   workflow_dispatch: # 保留這個，讓你可以隨時在網頁上手動點擊執行測試
 
 jobs:
