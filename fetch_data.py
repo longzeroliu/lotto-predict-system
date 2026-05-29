@@ -6,56 +6,78 @@ from datetime import datetime
 
 CSV_PATH = 'data/lotto.csv'
 
-def get_latest_taiwan_lotto():
+def get_latest_lotto_data():
     """
-    爬取台灣彩券最新開獎資訊的模擬函數
-    實際運作時需根據台彩官網目前的 HTML 結構解析
+    同時爬取大樂透與威力彩的最新開獎資訊
     """
-    # 這裡以大樂透(Lotto649)為範例結構
-    url = "https://www.taiwanlottery.com.tw/index_new.aspx" # 可更換為穩定的彩券API或資料源
+    url = "https://www.taiwanlottery.com.tw/index_new.aspx" 
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    results = []
     
     try:
-        # 為了教學示範，我們建立一筆最新一期的模擬數據（實務上由此處解析網頁 HTML）
-        # 假設今天開出新的一期
-        latest_data = {
-            "lotto_type": "大樂透",
-            "period": "115000045", # 假設 2026 年的期別
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "num1": 5, "num2": 12, "num3": 19, "num4": 23, "num5": 36, "num6": 42,
-            "special_num": 8
-        }
-        return latest_data
+        res = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(res.text, 'html.parser')
+        
+        # --- 1. 解析大樂透 (Lotto649) ---
+        try:
+            lotto_period = soup.find("span", {"id": "Lotto649Control_history_dlGrid_Lotto649_DrawTerm_0"}).text.strip()
+            lotto_date = soup.find("span", {"id": "Lotto649Control_history_dlGrid_Lotto649_DDate_0"}).text.strip()
+            lotto_balls = [int(soup.find("span", {"id": f"Lotto649Control_history_dlGrid_No{i}_0"}).text.strip()) for i in range(1, 7)]
+            lotto_special = int(soup.find("span", {"id": "Lotto649Control_history_dlGrid_No7_0"}).text.strip())
+            
+            results.append({
+                "lotto_type": "大樂透", "period": lotto_period, "date": lotto_date,
+                "num1": lotto_balls[0], "num2": lotto_balls[1], "num3": lotto_balls[2],
+                "num4": lotto_balls[3], "num5": lotto_balls[4], "num6": balls[5],
+                "special_num": lotto_special
+            })
+        except Exception as e:
+            print(f"大樂透解析失敗: {e}")
+
+        # --- 2. 解析威力彩 (SuperLotto) ---
+        try:
+            super_period = soup.find("span", {"id": "SuperLotto638Control_history_dlGrid_SuperLotto638_DrawTerm_0"}).text.strip()
+            super_date = soup.find("span", {"id": "SuperLotto638Control_history_dlGrid_SuperLotto638_DDate_0"}).text.strip()
+            super_balls = [int(soup.find("span", {"id": f"SuperLotto638Control_history_dlGrid_No{i}_0"}).text.strip()) for i in range(1, 7)]
+            super_special = int(soup.find("span", {"id": "SuperLotto638Control_history_dlGrid_No7_0"}).text.strip())
+            
+            results.append({
+                "lotto_type": "威力彩", "period": super_period, "date": super_date,
+                "num1": super_balls[0], "num2": super_balls[1], "num3": super_balls[2],
+                "num4": super_balls[3], "num5": super_balls[4], "num6": super_balls[5],
+                "special_num": super_special
+            })
+        except Exception as e:
+            print(f"威力彩解析失敗: {e}")
+            
+        return results
     except Exception as e:
-        print(f"爬取失敗: {e}")
-        return None
+        print(f"網路連線失敗: {e}")
+        return []
 
 def main():
-    print("開始執行彩券資料更新...")
-    
-    # 1. 讀取現有的 CSV 檔案
     if os.path.exists(CSV_PATH):
         df = pd.read_csv(CSV_PATH)
     else:
-        # 萬一檔案不見了，重建一個
         df = pd.DataFrame(columns=["lotto_type", "period", "date", "num1", "num2", "num3", "num4", "num5", "num6", "special_num"])
     
-    # 2. 爬取最新數據
-    latest_draw = get_latest_taiwan_lotto()
+    latest_draws = get_latest_lotto_data()
     
-    if latest_draw:
-        # 3. 檢查這一期是否已經紀錄過了
-        # 將期別轉為字串進行比對
-        if str(latest_draw['period']) in df['period'].astype(str).values:
-            print(f"期別 {latest_draw['period']} 已存在，無需更新。")
-        else:
-            # 4. 不存在則追加新數據
-            new_row = pd.DataFrame([latest_draw])
+    updated = False
+    for draw in latest_draws:
+        # 同時比對「彩券類型」與「期別」，避免大樂透和威力彩期別撞號
+        is_exist = df[(df['lotto_type'] == draw['lotto_type']) & (df['period'].astype(str) == str(draw['period']))]
+        
+        if is_exist.empty:
+            new_row = pd.DataFrame([draw])
             df = pd.concat([df, new_row], ignore_index=True)
-            df.to_csv(CSV_PATH, index=False)
-            print(f"成功更新期別: {latest_draw['period']}")
-    else:
-        print("未能取得最新數據。")
+            print(f"成功更新 【{draw['lotto_type']}】 期別: {draw['period']}")
+            updated = True
+        else:
+            print(f"【{draw['lotto_type']}】 期別 {draw['period']} 已存在，跳過。")
+            
+    if updated:
+        df.to_csv(CSV_PATH, index=False)
 
 if __name__ == "__main__":
     main()
