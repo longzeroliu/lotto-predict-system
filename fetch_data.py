@@ -28,7 +28,7 @@ def get_latest_lotto_data():
             results.append({
                 "lotto_type": "大樂透", "period": lotto_period, "date": lotto_date,
                 "num1": lotto_balls[0], "num2": lotto_balls[1], "num3": lotto_balls[2],
-                "num4": lotto_balls[3], "num5": lotto_balls[4], "num6": balls[5],
+                "num4": lotto_balls[3], "num5": lotto_balls[4], "num6": lotto_balls[5],
                 "special_num": lotto_special
             })
         except Exception as e:
