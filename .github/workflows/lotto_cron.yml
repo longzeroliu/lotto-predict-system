@@ -1,33 +1,38 @@
-name: Taiwan Lottery Update
+name: Lottery AI
 
 on:
-  schedule:
-    - cron: '30 13 * * 1-5'
-
   workflow_dispatch:
 
 jobs:
+
   update:
+
     runs-on: ubuntu-latest
 
     permissions:
       contents: write
 
     steps:
+
       - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: "3.12"
 
-      - name: Install packages
+      - name: Install Packages
         run: |
-          pip install pandas requests beautifulsoup4
+          pip install -r requirements.txt
 
-      - name: Run crawler
-        run: python fetch_data.py
+      - name: Run Fetch
+        run: |
+          python fetch_data.py
 
-      - name: Commit CSV
+      - name: Run Analyze
+        run: |
+          python analyze.py
+
+      - name: Commit
         run: |
           git config --global user.name github-actions
           git config --global user.email github-actions@github.com
@@ -35,6 +40,6 @@ jobs:
           git add .
 
           git diff --cached --quiet || (
-            git commit -m "update lotto data"
+            git commit -m "update data"
             git push
           )
